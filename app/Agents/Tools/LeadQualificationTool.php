@@ -4,50 +4,50 @@ declare(strict_types=1);
 
 namespace App\Agents\Tools;
 
+use App\Agents\ProcessingAgent;
 use LarAgent\Tool;
 
 final class LeadQualificationTool extends Tool
 {
     protected string $name = 'qualify_lead';
 
-    protected string $description = 'Qualify a lead based on company research, prospect research, and qualification criteria. Analyzes the fit and provides a qualification score, assessment, concerns, and recommendations.';
+    protected string $description = 'Qualify a prospect by comparing their company profile against the seller\'s ideal customer profile. Analyzes fit based on industry, company size, problem/solution alignment, and buying signals. Requires company_summary (from research_company) and seller_context (from research_seller). Returns a structured assessment with qualification score (0-100), fit rating, strengths, concerns, and actionable recommendations.';
 
     protected array $properties = [
         'company_summary' => [
             'type' => 'string',
-            'description' => 'The company research summary from the research_company tool',
+            'description' => 'The prospect company research summary obtained from the research_company tool. Must contain company overview, products, target customers, and growth signals.',
+        ],
+        'seller_context' => [
+            'type' => 'string',
+            'description' => 'The seller company context obtained from the research_seller tool. Contains the seller\'s value proposition, target market, and ICP indicators used for qualification comparison.',
         ],
         'prospect_summary' => [
             'type' => 'string',
-            'description' => 'The prospect research summary from the research_prospect tool',
+            'description' => 'Information about the prospect contact if available. Helps assess decision-maker fit and accessibility, but is not required for company-level qualification.',
         ],
-        'qualification_criteria' => [
+        'seller_notes' => [
             'type' => 'string',
-            'description' => 'The qualification criteria provided by the user (e.g., "Looking for companies in SaaS with 50-200 employees, decision makers in tech roles")',
+            'description' => 'Additional qualification criteria or hard requirements from the user. Examples: minimum company size thresholds, required industries, budget indicators, geographic restrictions, or specific use cases that must be present.',
         ],
     ];
 
-    protected array $required = ['company_summary', 'prospect_summary', 'qualification_criteria'];
+    protected array $required = ['company_summary', 'seller_context'];
 
     public function execute(array $input): string
     {
-        $companySummary = $input['company_summary'];
-        $prospectSummary = $input['prospect_summary'];
-        $criteria = $input['qualification_criteria'];
+        try {
+            $prompt = view('agents.processing_agent.qualify-lead', [
+                'company_summary' => $input['company_summary'],
+                'seller_context' => $input['seller_context'],
+                'prospect_summary' => $input['prospect_summary'] ?? null,
+                'seller_notes' => $input['seller_notes'] ?? null,
+            ])->render();
 
-        // This tool will be enhanced by the AI agent's reasoning
-        // The agent will analyze the summaries against criteria and generate the assessment
-        $assessment = "Lead Qualification Assessment\n\n";
-        $assessment .= "Qualification Criteria:\n{$criteria}\n\n";
-        $assessment .= "Company Summary:\n{$companySummary}\n\n";
-        $assessment .= "Prospect Summary:\n{$prospectSummary}\n\n";
-        $assessment .= "Please analyze the above information against the qualification criteria and provide:\n";
-        $assessment .= "1. Qualification Score (0-100)\n";
-        $assessment .= "2. Fit Assessment (High/Medium/Low)\n";
-        $assessment .= "3. Key Strengths\n";
-        $assessment .= "4. Concerns or Gaps\n";
-        $assessment .= "5. Recommendations for Next Steps";
-
-        return $assessment;
+            return ProcessingAgent::make()->respond($prompt);
+        }
+        catch (\Throwable $e) {
+            return "Error qualifying lead: {$e->getMessage()}";
+        }
     }
 }

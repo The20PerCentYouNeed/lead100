@@ -37,12 +37,19 @@ return [
 
     'firecrawl' => [
         'api_key' => env('FIRECRAWL_API_KEY'),
-        'api_url' => env('FIRECRAWL_API_URL', 'https://api.firecrawl.dev/v1'),
+        'api_url' => env('FIRECRAWL_API_URL', 'https://api.firecrawl.dev/v2'),
     ],
 
     'rapidapi' => [
         'key' => env('RAPIDAPI_KEY'),
-        'linkedin_host' => env('RAPIDAPI_LINKEDIN_HOST', 'linkedin-data-api.p.rapidapi.com'),
+        'linkedin_host' => env(
+            'RAPIDAPI_LINKEDIN_HOST',
+            'linkedin-data-api.p.rapidapi.com'
+        ),
+    ],
+
+    'website_context' => [
+        'cache_ttl_days' => env('WEBSITE_CONTEXT_CACHE_TTL_DAYS', 7),
     ],
 
 ];

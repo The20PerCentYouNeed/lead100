@@ -1,6 +1,8 @@
 <?php
 
-namespace App\AiAgents;
+declare(strict_types=1);
+
+namespace App\Agents;
 
 use LarAgent\Agent;
 
@@ -14,8 +16,11 @@ class ProcessingAgent extends Agent
 
     protected $tools = [];
 
-    public function prompt($message)
+    /**
+     * Processing agent instructions - this is a utility agent for processing prompts.
+     */
+    public function instructions(): string
     {
-        return $message;
+        return 'You are a helpful assistant that processes and summarizes information. Follow the instructions provided in each prompt precisely and return the requested output format.';
     }
 }

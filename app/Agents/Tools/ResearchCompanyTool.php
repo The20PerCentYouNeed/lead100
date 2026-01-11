@@ -4,58 +4,51 @@ declare(strict_types=1);
 
 namespace App\Agents\Tools;
 
-use App\AiAgents\ProcessingAgent;
-use App\Services\FirecrawlService;
+use App\Services\WebsiteContextService;
+use Illuminate\Support\Facades\Log;
 use LarAgent\Tool;
 
 final class ResearchCompanyTool extends Tool
 {
     protected string $name = 'research_company';
 
-    protected string $description = 'Research a company by scraping their website. Takes a company URL and returns an AI-generated summary including industry, size, products, recent news, and key information.';
+    protected string $description = 'Research a prospect company by analyzing their website. Scrapes the provided URL and returns a structured summary including company overview, products and services, target customers, value proposition, growth signals, and sales-relevant observations. Results are cached for efficiency.';
 
     protected array $properties = [
         'company_url' => [
             'type' => 'string',
-            'description' => 'The full URL of the company website to research (e.g., https://www.noctuacore.ai/)',
+            'description' => 'The full URL of the prospect company\'s website to research. Must be a valid, accessible URL (e.g., https://www.example.com).',
         ],
     ];
 
     protected array $required = ['company_url'];
 
     public function __construct(
-        private readonly FirecrawlService $firecrawlService
+        private readonly WebsiteContextService $websiteContextService
     ) {
         parent::__construct($this->name, $this->description);
     }
 
     public function execute(array $input): string
     {
-        $url = $input['company_url'];
+        Log::info('ResearchCompanyTool: execute called', ['input' => $input]);
 
         try {
-            $data = $this->firecrawlService->scrape($url);
+            $result = $this->websiteContextService->getCompanyContext($input['company_url']);
+            Log::info('ResearchCompanyTool: success', [
+                'url' => $input['company_url'],
+                'result_length' => strlen($result),
+            ]);
 
-            // Process raw scraped data through LLM for clean, structured summary.
-            $prompt = view('agents.processing_agent.research-company', [
-                'data' => $data['content'],
-            ])->render();
-
-            $processedSummary = ProcessingAgent::make()->respond($prompt);
-
-            // Combine metadata with LLM-processed summary.
-            $summary = "Company Research Summary for: {$data['title']}\n\n";
-            $summary .= "Website: {$url}\n\n";
-
-            if (!empty($data['metadata']['description'])) {
-                $summary .= "Description: {$data['metadata']['description']}\n\n";
-            }
-
-            $summary .= $processedSummary;
-
-            return $summary;
+            return $result;
         }
         catch (\Throwable $e) {
+            Log::error('ResearchCompanyTool: error', [
+                'url' => $input['company_url'] ?? 'N/A',
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
             return "Error researching company: {$e->getMessage()}. Please verify the URL is correct and accessible.";
         }
     }
